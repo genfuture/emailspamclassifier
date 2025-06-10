@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Enhanced Spam Classifier with Multi-Dataset Support
+Kaggle Dataset Downloader and Spam Classifier Pipeline
 """
 import os
 import boto3
+import kagglehub
+import pandas as pd
 from botocore.exceptions import ClientError
 import matplotlib.pyplot as plt
 from pyspark.sql import SparkSession
@@ -12,12 +14,49 @@ from pyspark.ml import Pipeline
 from pyspark.ml.feature import Tokenizer, StopWordsRemover, HashingTF, IDF
 from pyspark.ml.classification import NaiveBayes
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator, BinaryClassificationEvaluator
+import tempfile
 
 # --- Configuration ---
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 S3_BUCKET_NAME = os.environ.get("S3_BUCKET")
+KAGGLE_USERNAME = os.environ.get("KAGGLE_USERNAME")
+KAGGLE_KEY = os.environ.get("KAGGLE_KEY")
 RAW_BASE_PATH = f"s3a://{S3_BUCKET_NAME}/spam-dataset/"
 OUTPUT_PATH = f"s3a://{S3_BUCKET_NAME}/outputs/"
+
+# --- Kaggle Dataset Configuration ---
+KAGGLE_DATASETS = [
+    {
+        "handle": "rtatman/enron-email-dataset",
+        "file": "emails.csv",
+        "s3_folder": "enron-email-dataset",
+        "col_map": {"message": "text"}
+    },
+    {
+        "handle": "rtatman/deceptive-opinion-spam-corpus",
+        "file": "deceptive-opinion.csv",
+        "s3_folder": "deceptive-opinion-spam-corpus",
+        "col_map": {"deceptive": "label", "text": "text"}
+    },
+    {
+        "handle": "uciml/sms-spam-collection-dataset",
+        "file": "spam.csv",
+        "s3_folder": "spam-or-not-spam-dataset",
+        "col_map": {"v2": "text", "v1": "label"}
+    },
+    {
+        "handle": "balaka18/email-spam-classification-dataset",
+        "file": "spam_ham_dataset.csv",
+        "s3_folder": "spam-mails-dataset",
+        "col_map": {"text": "text", "label_num": "label"}
+    },
+    {
+        "handle": "karthickveerakumar/spam-filter",
+        "file": "emails.csv",
+        "s3_folder": "email-spam-dataset",
+        "col_map": {"Body": "text", "Label": "label"}
+    }
+]
 
 # --- Helper Functions ---
 def upload_to_s3(local_path, s3_key):
@@ -29,12 +68,45 @@ def upload_to_s3(local_path, s3_key):
     except ClientError as e:
         print(f"S3 upload failed: {e}")
 
-def load_source_df(spark, folder, filename, col_map, sample_limit, sample_size):
-    """
-    Robust dataset loader with schema handling and sampling
-    """
-    s3_path = f"{RAW_BASE_PATH}{folder}/"
-    s3_path += filename if filename else "*.csv"
+def download_and_upload_datasets():
+    """Downloads datasets from Kaggle Hub and uploads to S3"""
+    print("Starting Kaggle dataset download and upload process...")
+    
+    s3_client = boto3.client('s3', region_name=AWS_REGION)
+    
+    for dataset in KAGGLE_DATASETS:
+        handle = dataset["handle"]
+        file_name = dataset["file"]
+        s3_folder = dataset["s3_folder"]
+        s3_key = f"spam-dataset/{s3_folder}/{file_name}"
+        
+        print(f"\nProcessing dataset: {handle}")
+        
+        try:
+            # Download from Kaggle Hub
+            print(f"Downloading {file_name} from Kaggle Hub...")
+            with tempfile.TemporaryDirectory() as tmpdir:
+                local_path = kagglehub.model_download(
+                    handle,
+                    file_name,
+                    username=KAGGLE_USERNAME,
+                    key=KAGGLE_KEY,
+                    path=tmpdir
+                )
+                print(f"Downloaded to: {local_path}")
+                
+                # Upload to S3
+                s3_client.upload_file(local_path, S3_BUCKET_NAME, s3_key)
+                print(f"Uploaded to s3://{S3_BUCKET_NAME}/{s3_key}")
+                
+        except Exception as e:
+            print(f"Failed to process {handle}: {str(e)}")
+    
+    print("\nAll datasets uploaded to S3 successfully!")
+
+def load_source_df(spark, folder, filename, col_map, sample_limit=None, sample_size=None):
+    """Robust dataset loader with schema handling and sampling"""
+    s3_path = f"{RAW_BASE_PATH}{folder}/{filename}"
     
     try:
         df = spark.read.option("header", "true").csv(s3_path)
@@ -70,11 +142,8 @@ def load_source_df(spark, folder, filename, col_map, sample_limit, sample_size):
         print(f"🚨 Error loading {s3_path}: {str(e)}")
         return None
 
-def main():
-    """Main pipeline execution"""
-    if not S3_BUCKET_NAME:
-        raise ValueError("S3_BUCKET_NAME environment variable not set")
-
+def run_training_pipeline():
+    """Main training pipeline execution"""
     # Initialize Spark with enhanced configuration
     spark = (
         SparkSession.builder
@@ -95,13 +164,11 @@ def main():
 
     # Dataset configuration with schema mappings
     datasets = [
-        ("enron-email-dataset",            "emails.csv",              {"message": "text"},                  0,      50000),
-        ("deceptive-opinion-spam-corpus",   "deceptive-opinion.csv",    {"deceptive": "label", "text": "text"}, None,   None),
-        ("spam-or-not-spam-dataset",        "spam_or_not_spam.csv",     {"email": "text", "label": "label"},    None,   None),
-        ("spam-mails-dataset",              "spam_ham_dataset.csv",     {"text": "text", "label_num": "label"}, None,   None),
-        ("email-spam-classification-dataset-csv", None,                  {"text": "text", "label": "label"},     None,   None),
-        ("spam-email",                     "spam.csv",                {"v2": "text", "v1": "label"},          None,   50000),
-        ("email-spam-dataset",              None,                      {"Body": "text", "Label": "label"},     None,   None),
+        ("enron-email-dataset", "emails.csv", {"message": "text"}, 0, 50000),
+        ("deceptive-opinion-spam-corpus", "deceptive-opinion.csv", {"deceptive": "label", "text": "text"}, None, None),
+        ("spam-or-not-spam-dataset", "spam.csv", {"v2": "text", "v1": "label"}, None, None),
+        ("spam-mails-dataset", "spam_ham_dataset.csv", {"text": "text", "label_num": "label"}, None, None),
+        ("email-spam-dataset", "emails.csv", {"Body": "text", "Label": "label"}, None, None),
     ]
 
     # Load and combine datasets
@@ -112,7 +179,7 @@ def main():
         if df:
             row_count = df.count()
             all_dfs.append(df)
-            print(f"✅ Added {row_count} rows from {folder}/{filename or '*'}")
+            print(f"✅ Added {row_count} rows from {folder}/{filename}")
 
     if not all_dfs:
         raise RuntimeError("No datasets loaded - check configurations and S3 paths")
@@ -264,7 +331,21 @@ def main():
     model.transform(sample_df).select("text", "prediction").show(truncate=50)
     
     spark.stop()
-    print("\n✅ Pipeline completed successfully!")
+    print("\n✅ Training pipeline completed successfully!")
+
+def main():
+    """Main execution flow"""
+    if not all([S3_BUCKET_NAME, KAGGLE_USERNAME, KAGGLE_KEY]):
+        raise ValueError("Required environment variables not set: "
+                         "S3_BUCKET, KAGGLE_USERNAME, KAGGLE_KEY")
+    
+    # Step 1: Download datasets from Kaggle Hub and upload to S3
+    download_and_upload_datasets()
+    
+    # Step 2: Run the training pipeline
+    run_training_pipeline()
+    
+    print("\n🚀 All processes completed successfully!")
 
 if __name__ == "__main__":
     main()
