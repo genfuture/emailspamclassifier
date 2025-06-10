@@ -47,9 +47,11 @@ def main():
     if not S3_BUCKET_NAME:
         raise ValueError("S3_BUCKET_NAME environment variable not set. Please configure it.")
 
+    # Corrected Code
     spark = (
         SparkSession.builder
         .appName("SpamClassifierPipeline")
+        .config("spark.jars.packages", "org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262")
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
         .enableHiveSupport()
         .getOrCreate()
