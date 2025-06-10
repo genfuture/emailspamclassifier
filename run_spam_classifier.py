@@ -18,11 +18,12 @@ import tempfile
 
 # --- Configuration ---
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
-S3_BUCKET_NAME = os.environ.get("S3_BUCKET")
+S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")  # Fixed variable name
 KAGGLE_USERNAME = os.environ.get("KAGGLE_USERNAME")
 KAGGLE_KEY = os.environ.get("KAGGLE_KEY")
 RAW_BASE_PATH = f"s3a://{S3_BUCKET_NAME}/spam-dataset/"
 OUTPUT_PATH = f"s3a://{S3_BUCKET_NAME}/outputs/"
+
 
 # --- Kaggle Dataset Configuration ---
 KAGGLE_DATASETS = [
@@ -337,7 +338,7 @@ def main():
     """Main execution flow"""
     if not all([S3_BUCKET_NAME, KAGGLE_USERNAME, KAGGLE_KEY]):
         raise ValueError("Required environment variables not set: "
-                         "S3_BUCKET, KAGGLE_USERNAME, KAGGLE_KEY")
+                         "S3_BUCKET_NAME, KAGGLE_USERNAME, KAGGLE_KEY")
     
     # Step 1: Download datasets from Kaggle Hub and upload to S3
     download_and_upload_datasets()
