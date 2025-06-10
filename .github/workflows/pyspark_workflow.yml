@@ -35,11 +35,11 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }} # Optional: for temporary credentials
           aws-region: us-east-1
 
       - name: Run PySpark Script
         env:
-          S3_BUCKET: ${{ secrets.S3_BUCKET_NAME }}
-          AWS_REGION: us-east-1
+          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: python run_spam_classifier.py
