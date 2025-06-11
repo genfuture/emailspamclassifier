@@ -12,7 +12,6 @@
 With **3.4 billion spam emails sent daily** and phishing attacks representing **over 34% of all cybercrime**, traditional spam filters quickly become outdated. This project aims to democratize cybersecurity by creating an **open-source, continuously updated spam detection system** that:
 
 - 🔄 **Stays current** with latest phishing campaigns and attack vectors
-- 🤝 **Community-driven** - security researchers contribute new threat datasets
 - 🚀 **Production-ready** - scalable PySpark architecture for real-world deployment
 - 🌍 **Accessible** - anyone can use this advanced spam filter for email security
 
