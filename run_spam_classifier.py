@@ -18,12 +18,16 @@ import tempfile
 
 # --- Configuration ---
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
-S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")  # Fixed variable name
+S3_BUCKET_NAME = os.environ.get("S3_BUCKET_NAME")
 KAGGLE_USERNAME = os.environ.get("KAGGLE_USERNAME")
 KAGGLE_KEY = os.environ.get("KAGGLE_KEY")
 RAW_BASE_PATH = f"s3a://{S3_BUCKET_NAME}/spam-dataset/"
 OUTPUT_PATH = f"s3a://{S3_BUCKET_NAME}/outputs/"
 
+# Retrieve AWS credentials from environment
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+AWS_SESSION_TOKEN = os.environ.get("AWS_SESSION_TOKEN")
 
 # --- Kaggle Dataset Configuration ---
 KAGGLE_DATASETS = [
@@ -145,7 +149,7 @@ def load_source_df(spark, folder, filename, col_map, sample_limit=None, sample_s
 
 def run_training_pipeline():
     """Main training pipeline execution"""
-    # Initialize Spark with enhanced configuration
+    # Initialize Spark with explicit AWS credentials
     spark = (
         SparkSession.builder
         .appName("SpamClassifierPipeline")
@@ -154,7 +158,10 @@ def run_training_pipeline():
                 "com.amazonaws:aws-java-sdk-bundle:1.12.262")
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
         .config("spark.hadoop.fs.s3a.aws.credentials.provider", 
-                "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider")
+                "org.apache.hadoop.fs.s3a.TemporaryAWSCredentialsProvider")
+        .config("spark.hadoop.fs.s3a.access.key", AWS_ACCESS_KEY_ID)
+        .config("spark.hadoop.fs.s3a.secret.key", AWS_SECRET_ACCESS_KEY)
+        .config("spark.hadoop.fs.s3a.session.token", AWS_SESSION_TOKEN)
         .enableHiveSupport()
         .getOrCreate()
     )
@@ -336,9 +343,11 @@ def run_training_pipeline():
 
 def main():
     """Main execution flow"""
-    if not all([S3_BUCKET_NAME, KAGGLE_USERNAME, KAGGLE_KEY]):
-        raise ValueError("Required environment variables not set: "
-                         "S3_BUCKET_NAME, KAGGLE_USERNAME, KAGGLE_KEY")
+    if not all([S3_BUCKET_NAME, KAGGLE_USERNAME, KAGGLE_KEY, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY]):
+        missing = [var for var in ["S3_BUCKET_NAME", "KAGGLE_USERNAME", "KAGGLE_KEY", 
+                                  "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"] 
+                   if not os.environ.get(var)]
+        raise ValueError(f"Missing environment variables: {missing}")
     
     # Step 1: Download datasets from Kaggle Hub and upload to S3
     download_and_upload_datasets()
