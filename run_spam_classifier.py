@@ -162,6 +162,8 @@ def run_training_pipeline():
         .config("spark.hadoop.fs.s3a.access.key", AWS_ACCESS_KEY_ID)
         .config("spark.hadoop.fs.s3a.secret.key", AWS_SECRET_ACCESS_KEY)
         .config("spark.hadoop.fs.s3a.session.token", AWS_SESSION_TOKEN)
+        .config("spark.hadoop.fs.s3a.path.style.access", "true")  # Fix for buckets with dots
+        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "true")
         .enableHiveSupport()
         .getOrCreate()
     )
