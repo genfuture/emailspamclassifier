@@ -5,7 +5,7 @@
 [![PySpark](https://img.shields.io/badge/PySpark-3.4.1-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-> **A production-ready, community-maintained spam email classifier that evolves with emerging cyber threats through collaborative dataset contributions.**
+> **A production-ready spam email classifier that evolves with emerging cyber threats through collaborative dataset contributions.**
 
 ## 🌟 Vision
 
