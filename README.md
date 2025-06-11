@@ -225,13 +225,6 @@ SPARK_LOG_LEVEL=DEBUG python run_spam_classifier.py
 - **Community Contributors**: Growing open-source community
 - **Real-world Deployments**: Protecting users worldwide
 
-### Success Stories
-*"This classifier caught a sophisticated phishing campaign that our existing filter missed. The community-driven approach keeps us ahead of attackers."* - Security Researcher
-
-## 📜 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 📞 Support & Contact
 
 - **info**: g.prem2349@gmail.com
