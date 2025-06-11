@@ -1,6 +1,6 @@
 # 🛡️ PySpark Spam Email Classifier
 
-[EmailSpamClassifier](https://github.com/genfuture/emailspamclassifier/actions)
+[![PySpark Spam Classifier CI](https://github.com/genfuture/emailspamclassifier/actions/workflows/pyspark_workflow.yml/badge.svg)](https://github.com/genfuture/emailspamclassifier/actions/workflows/pyspark_workflow.yml)(https://github.com/genfuture/emailspamclassifier/actions)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![PySpark](https://img.shields.io/badge/PySpark-3.4.1-orange.svg)](https://spark.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
